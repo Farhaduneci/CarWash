@@ -32,12 +32,32 @@ class CarWash:
         hour += self.time_schedule['start']
         return '{:02d}:{:02d}'.format(hour, minute)
 
+    def __iter__(self):
+        return _CarWashIterator(self)
+
+
+class _CarWashIterator:
+    def __init__(self, car_wash):
+        self.car_wash = car_wash
+        self.index = 0
+
+    def __iter__(self):
+        return self
+
+    def __next__(self):
+        if self.index >= len(self.car_wash.reservations):
+            raise StopIteration
+        reservation = self.car_wash.reservations[self.index]
+        self.index += 1
+        return reservation
+
 
 class CommandDispatcher:
     def __init__(self, car_wash):
         self._car_wash = car_wash
         self._commands = {
             'reserve': self._reserve,
+            'list-reservations': self._list_reservations,
         }
 
     def dispatch(self, command):
@@ -60,6 +80,11 @@ class CommandDispatcher:
 
     def _reserve_exact(self, date, time, services):
         self._car_wash.add_reservation(services, date, time)
+
+    def _list_reservations(self):
+        for reservation in self._car_wash:
+            print(reservation.services,
+                  self._car_wash.format_time(reservation.time))
 
 
 def main():
