@@ -8,6 +8,14 @@ class Reservation:
     def reservation_duration(services):
         return sum(CarWash.available_services[service] for service in services)
 
+    @staticmethod
+    def format_time(time):
+        date = time // 12 // 60 + 1
+        time = time % (12 * 60)
+        hour, minute = divmod(time, 60)
+        hour += CarWash.time_schedule['start']
+        return '{:02d} {:02d}:{:02d}'.format(date, hour, minute)
+
 
 class CarWash:
     def __init__(self):
@@ -23,14 +31,11 @@ class CarWash:
         'nezafat': 20
     }
 
-    def add_reservation(self, services, date=None, time=None):
-        print("Adding reservation", services, date, time)
+    def add_reservation(self, services, date=1, time=0):
+        self.reservations.append(Reservation(services, date, time))
 
-    def format_time(self, time):
-        time = time % 30
-        hour, minute = divmod(time, 60)
-        hour += self.time_schedule['start']
-        return '{:02d}:{:02d}'.format(hour, minute)
+    def number_of_reservations(self):
+        return len(self.reservations)
 
     def __iter__(self):
         return _CarWashIterator(self)
@@ -65,8 +70,14 @@ class CommandDispatcher:
         self._handle_command(command, parameters)
 
     def _handle_command(self, command, parameters):
-        self._commands[command](
-            parameters) if parameters else self._commands[command]()
+        if command in self._commands:
+            try:
+                self._commands[command](
+                    parameters) if parameters else self._commands[command]()
+            except Exception as e:
+                print("ERROR: ", e)
+        else:
+            print('Unknown command:', command)
 
     def _reserve(self, *parameters):
         if parameters[0][0] == 'earliest':
@@ -82,9 +93,25 @@ class CommandDispatcher:
         self._car_wash.add_reservation(services, date, time)
 
     def _list_reservations(self):
-        for reservation in self._car_wash:
-            print(reservation.services,
-                  self._car_wash.format_time(reservation.time))
+        self._print_reservations(self._car_wash)
+
+    def _print_reservations(self, car_wash):
+        counter = 0
+        print('\n' * 2)
+        print("LIST OF RESERVATIONS".center(50))
+        print()
+        print("%-3s %-35s %-10s %-8s" %
+              ('ID', 'SERVICES', 'DATE, TIME', 'DURATION'))
+        print("%3s %35s %10s %4s" % ('-' * 3, '-' * 35, '-' * 10, '-' * 8))
+        # Print the body.
+        for reservation in car_wash:
+            print("%3d %-35s %-10s %-8s" % (counter, ', '.join(reservation.services),
+                  Reservation.format_time(reservation.time), reservation.duration))
+            counter += 1
+        # Add a footer.
+        print("-" * 3, '-' * 35, '-' * 10, '-' * 8)
+        print("Total number of reservations:", (car_wash.number_of_reservations()))
+        print('\n' * 2)
 
 
 def main():
